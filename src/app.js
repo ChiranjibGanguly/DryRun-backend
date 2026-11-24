@@ -3,6 +3,9 @@ import cors from 'cors';
 import { config } from './config.js';
 import { pool } from './db/pool.js';
 import authRouter from './routes/auth.js';
+import catalogRouter from './routes/catalog.js';
+import adminCatalogRouter from './routes/adminCatalog.js';
+import uploadsRouter from './routes/uploads.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 export function createApp() {
@@ -10,6 +13,9 @@ export function createApp() {
 
   app.use(cors({ origin: config.corsOrigin }));
   app.use(express.json({ limit: '1mb' }));
+
+  // Uploaded book covers
+  app.use('/uploads', express.static(config.uploadDir, { maxAge: '7d', fallthrough: false }));
 
   app.get('/api/health', async (_req, res) => {
     try {
@@ -21,6 +27,9 @@ export function createApp() {
   });
 
   app.use('/api/auth', authRouter);
+  app.use('/api', catalogRouter);
+  app.use('/api/admin/uploads', uploadsRouter);
+  app.use('/api/admin', adminCatalogRouter);
 
   app.use(notFound);
   app.use(errorHandler);

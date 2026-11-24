@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import path from 'node:path';
 
 function required(name) {
   const value = process.env[name];
@@ -12,4 +13,6 @@ export const config = {
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // Book covers are stored here and served at /uploads (Cloudinary later).
+  uploadDir: path.resolve(process.env.UPLOAD_DIR || 'uploads'),
 };

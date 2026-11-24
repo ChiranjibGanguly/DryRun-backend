@@ -9,6 +9,10 @@ export function errorHandler(err, _req, res, _next) {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'Invalid JSON body' });
   }
+  if (!(err instanceof HttpError) && err.status >= 400 && err.status < 500) {
+    // Client errors raised by Express middleware, e.g. a missing file under /uploads
+    return res.status(err.status).json({ error: err.status === 404 ? 'Not found' : 'Bad request' });
+  }
   if (err instanceof HttpError) {
     const body = { error: err.message };
     if (err.details) body.details = err.details;
