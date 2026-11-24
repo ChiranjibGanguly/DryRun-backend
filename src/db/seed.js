@@ -2,6 +2,7 @@
 import 'dotenv/config';
 import { pool, query } from './pool.js';
 import { createUser } from '../services/userService.js';
+import { explainDbError } from './errors.js';
 
 const { ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME = 'Store Admin' } = process.env;
 
@@ -35,7 +36,7 @@ try {
   }
   console.log(`Seeded ${categories.length} categories`);
 } catch (err) {
-  console.error(err.message);
+  console.error(explainDbError(err));
   process.exitCode = 1;
 } finally {
   await pool.end();

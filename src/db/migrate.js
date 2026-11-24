@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { pool } from './pool.js';
+import { explainDbError } from './errors.js';
 
 const dir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'migrations');
 
@@ -42,7 +43,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   migrate()
     .then(() => pool.end())
     .catch(async (err) => {
-      console.error(err.message);
+      console.error(explainDbError(err));
       await pool.end();
       process.exit(1);
     });
