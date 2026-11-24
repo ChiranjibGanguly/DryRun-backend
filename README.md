@@ -62,6 +62,47 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 | POST | `/api/admin/authors` | `{ name, bio? }` |
 | POST | `/api/admin/uploads/cover` | multipart field `file` (JPEG/PNG/WebP, max 2 MB) → `{ url }`; use it as `coverUrl` |
 
+### Cart (login required)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/cart` | `{ items, itemCount, subtotalPaise, shippingPaise, totalPaise, canCheckout }`; each item may carry `issue`: `unavailable` / `not_enough_stock` |
+| POST | `/api/cart/items` | `{ bookId, quantity? }` adds to the cart (capped at stock) |
+| PATCH | `/api/cart/items/:bookId` | `{ quantity }` (0 removes) |
+| DELETE | `/api/cart/items/:bookId` | Remove one book |
+| DELETE | `/api/cart` | Empty the cart |
+
+Shipping: ₹49 below ₹499, free from ₹499 (`SHIPPING_FEE_PAISE`, `FREE_SHIPPING_MIN_PAISE`).
+
+### Addresses (login required)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/addresses` | Default first |
+| POST | `/api/addresses` | `{ name, phone, line1, line2?, city, state, pincode, isDefault? }` – 10-digit Indian mobile, 6-digit PIN |
+| PATCH | `/api/addresses/:id` | Any of the fields |
+| DELETE | `/api/addresses/:id` | Another address becomes default |
+
+### Orders and payments
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/api/payments/config` | – | `{ online, cod, razorpayKeyId }` – which payment options to show |
+| POST | `/api/orders` | user | `{ addressId, paymentMethod: "cod" \| "online" }` – turns the cart into an order and reserves stock. COD → status `placed`. Online → status `pending` + `payment` details for Razorpay Checkout |
+| GET | `/api/orders` | user | My orders, newest first (`?page&limit`) |
+| GET | `/api/orders/:id` | user | One order with items and address |
+| POST | `/api/orders/:id/payment` | user | Payment details again for a pending online order |
+| POST | `/api/orders/:id/cancel` | user | Cancel a `pending` or `placed` order; stock is put back |
+| POST | `/api/payments/verify` | user | `{ orderId, razorpayOrderId, razorpayPaymentId, razorpaySignature }` – checks the signature, marks the order `paid` |
+| POST | `/api/payments/webhook` | Razorpay signature | `payment.captured` / `order.paid` mark the order paid (backup for verify) |
+
+Order status: `pending` (waiting for online payment) → `paid`, or `placed` (cash on delivery) → `shipped` → `delivered`; `cancelled`.
+
+**Razorpay setup:** put your **test** keys in `.env` (`RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`).
+Until both are set, online payment is switched off and only cash on delivery is offered.
+For the webhook, add `https://<your-api>/api/payments/webhook` in the Razorpay dashboard with
+events `payment.captured` and `order.paid`, and put its secret in `RAZORPAY_WEBHOOK_SECRET`.
+
 Uploaded covers are stored in `backend/uploads/` and served at `/uploads/...`
 (moving to Cloudinary before launch).
 
