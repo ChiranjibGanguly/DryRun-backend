@@ -16,6 +16,8 @@ const categories = [
   ['Children', 'children'],
   ['Academic', 'academic'],
   ['Comics', 'comics'],
+  ['Poetry', 'poetry'],
+  ['History', 'history'],
 ];
 
 try {
@@ -53,9 +55,14 @@ try {
       mrpPaise: b.mrp,
       stock: b.stock,
       categorySlugs: b.categories,
+      isFeatured: Boolean(b.featured),
     });
     added++;
   }
+
+  // Mark the sample "featured" books (also for databases seeded before this flag existed).
+  const featuredSlugs = sampleBooks.filter((b) => b.featured).map((b) => slugify(b.title));
+  await query('UPDATE books SET is_featured = true WHERE slug = ANY($1) AND NOT is_featured', [featuredSlugs]);
   console.log(`Sample books: ${added} added, ${sampleBooks.length - added} already there`);
   if (ADMIN_PASSWORD === 'Admin@12345') {
     console.warn('Note: ADMIN_PASSWORD is the default. Change the admin password (Account → Change password) before going live.');

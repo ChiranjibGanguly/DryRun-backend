@@ -47,6 +47,7 @@ const bookFields = {
     .nullable()
     .optional(),
   isActive: z.boolean().optional(),
+  isFeatured: z.boolean().optional(),
   categorySlugs: z.array(z.string().trim().min(1)).max(10).optional(),
 };
 

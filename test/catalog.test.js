@@ -193,6 +193,52 @@ describe('public catalogue API', () => {
   });
 });
 
+describe('home page lists', () => {
+  test('featured filter, on-sale filter and discount sort', async () => {
+    const featured = await addBook({ title: `Star ${tag}`, pricePaise: 10000, mrpPaise: 20000, isFeatured: true });
+    assert.equal(featured.isFeatured, true);
+
+    const list = await api(`/api/books?category=${catSlug}&featured=true`);
+    assert.deepEqual(list.body.items.map((b) => b.title), [`Star ${tag}`]);
+
+    const notFeatured = await api(`/api/books?category=${catSlug}&featured=false`);
+    assert.ok(!notFeatured.body.items.some((b) => b.title === `Star ${tag}`));
+
+    const offers = await api(`/api/books?category=${catSlug}&onSale=1&sort=discount`);
+    assert.equal(offers.body.items[0].title, `Star ${tag}`, '50% off comes first');
+    assert.ok(offers.body.items.every((b) => b.mrpPaise > b.pricePaise));
+
+    assert.equal((await api('/api/books?featured=maybe')).status, 400);
+  });
+
+  test('best sellers are ordered by copies sold in completed orders', async () => {
+    const a = await addBook({ title: `Seller A ${tag}`, pricePaise: 1000, stock: 50 });
+    const b = await addBook({ title: `Seller B ${tag}`, pricePaise: 1000, stock: 50 });
+    const { rows } = await query('SELECT id FROM users WHERE email LIKE $1 LIMIT 1', ['cattest_customer%']);
+    const userId = rows[0].id;
+    async function order(bookId, quantity, status) {
+      const o = await query(
+        `INSERT INTO orders (user_id, address_snapshot, total_paise, status) VALUES ($1, '{}', 0, $2) RETURNING id`,
+        [userId, status],
+      );
+      await query(
+        `INSERT INTO order_items (order_id, book_id, title_snapshot, unit_price_paise, quantity) VALUES ($1, $2, 'x', 0, $3)`,
+        [o.rows[0].id, bookId, quantity],
+      );
+    }
+    await order(a.id, 2, 'delivered');
+    await order(b.id, 3, 'delivered');
+    await order(a.id, 9, 'cancelled'); // does not count
+    await order(a.id, 9, 'pending'); // unpaid: does not count
+
+    const res = await api(`/api/books?category=${catSlug}&sort=bestselling`);
+    const titles = res.body.items.map((x) => x.title);
+    assert.ok(titles.indexOf(`Seller B ${tag}`) < titles.indexOf(`Seller A ${tag}`));
+    assert.equal(titles.indexOf(`Seller B ${tag}`), 0);
+    await query('DELETE FROM orders WHERE user_id = $1', [userId]);
+  });
+});
+
 describe('cover uploads', () => {
   // 1x1 transparent PNG
   const png = Buffer.from(

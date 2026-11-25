@@ -160,10 +160,10 @@ describe('CSV import', () => {
   const isbnA = `978${Date.now().toString().slice(-10)}`;
 
   const csv =
-    'Title,Author,Price,MRP,Stock,ISBN,Language,Categories,Description,Active\n' +
-    `Import One ${tag},Author ${tag},"₹1,299.50",1499,7,${isbnA},English,Fiction;children,"Has, a comma",yes\n` +
-    `Import Two ${tag},Author ${tag},199,,3,,Hindi,non-fiction,,no\n` +
-    `,Nobody,abc,,x,123,,mystery,,\n`;
+    'Title,Author,Price,MRP,Stock,ISBN,Language,Categories,Description,Active,Featured\n' +
+    `Import One ${tag},Author ${tag},"₹1,299.50",1499,7,${isbnA},English,Fiction;children,"Has, a comma",yes,yes\n` +
+    `Import Two ${tag},Author ${tag},199,,3,,Hindi,non-fiction,,no,\n` +
+    `,Nobody,abc,,x,123,,mystery,,,\n`;
 
   test('dry run checks every row and writes nothing', async () => {
     const res = await upload(csv, true);
@@ -197,16 +197,20 @@ describe('CSV import', () => {
     assert.equal(one.author, `Author ${tag}`);
     assert.deepEqual(one.cats, ['children', 'fiction']);
 
-    const two = (await query('SELECT is_active FROM books WHERE title = $1', [`Import Two ${tag}`])).rows[0];
+    const two = (await query('SELECT is_active, is_featured FROM books WHERE title = $1', [`Import Two ${tag}`])).rows[0];
     assert.equal(two.is_active, false);
+    assert.equal(two.is_featured, false);
+    const oneFeatured = (await query('SELECT is_featured FROM books WHERE isbn = $1', [isbnA])).rows[0];
+    assert.equal(oneFeatured.is_featured, true);
 
     const again = await upload(
       'title,price,stock,isbn\n' + `Import One ${tag} (2nd ed),999,20,${isbnA}\n`,
     );
     assert.equal(again.body.updated, 1);
     assert.equal(again.body.created, 0);
-    const updated = (await query('SELECT title, price_paise, stock FROM books WHERE isbn = $1', [isbnA])).rows[0];
-    assert.deepEqual(updated, { title: `Import One ${tag} (2nd ed)`, price_paise: 99900, stock: 20 });
+    const updated = (await query('SELECT title, price_paise, stock, is_featured FROM books WHERE isbn = $1', [isbnA])).rows[0];
+    assert.deepEqual(updated, { title: `Import One ${tag} (2nd ed)`, price_paise: 99900, stock: 20, is_featured: true },
+      'no featured column: setting kept');
   });
 
   test('rejects files without the required columns', async () => {

@@ -12,12 +12,19 @@ import { HttpError } from '../utils/httpError.js';
 
 const router = Router();
 
+const flag = z
+  .enum(['true', 'false', '1', '0'])
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v === 'true' || v === '1'));
+
 export const listQuerySchema = z.object({
   q: z.string().trim().max(100).optional().transform((v) => v || undefined),
   category: z.string().trim().max(80).optional().transform((v) => v || undefined),
   sort: z.enum(SORT_OPTIONS).default('newest'),
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(50).default(20),
+  featured: flag,
+  onSale: flag,
 });
 
 const wrap = (fn) => (req, res, next) => fn(req, res).catch(next);

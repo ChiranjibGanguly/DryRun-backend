@@ -2,11 +2,19 @@ import { pool, query } from '../db/pool.js';
 import { HttpError } from '../utils/httpError.js';
 import { slugify } from '../utils/slugify.js';
 
+// Copies sold in orders that went ahead (not cancelled, not unpaid online).
+const SOLD = `(SELECT COALESCE(sum(oi.quantity), 0) FROM order_items oi
+  JOIN orders o ON o.id = oi.order_id
+  WHERE oi.book_id = b.id AND o.status NOT IN ('cancelled', 'pending'))`;
+
 const SORTS = {
   newest: 'b.created_at DESC, b.id',
   price_asc: 'b.price_paise ASC, b.id',
   price_desc: 'b.price_paise DESC, b.id',
   title: 'lower(b.title) ASC, b.id',
+  bestselling: `${SOLD} DESC, b.is_featured DESC, b.created_at DESC, b.id`,
+  discount: `CASE WHEN b.mrp_paise > b.price_paise
+    THEN (b.mrp_paise - b.price_paise)::float / b.mrp_paise ELSE 0 END DESC, b.id`,
 };
 export const SORT_OPTIONS = Object.keys(SORTS);
 
@@ -38,6 +46,7 @@ export function toBook(row) {
     stock: row.stock,
     coverUrl: row.cover_url,
     isActive: row.is_active,
+    isFeatured: row.is_featured,
     categories: row.categories ?? [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -54,6 +63,8 @@ export async function listBooks({
   page = 1,
   limit = 20,
   includeInactive = false,
+  featured,
+  onSale,
 }) {
   const where = [];
   const params = [];
@@ -63,6 +74,8 @@ export async function listBooks({
   };
 
   if (!includeInactive) where.push('b.is_active');
+  if (featured !== undefined) where.push(featured ? 'b.is_featured' : 'NOT b.is_featured');
+  if (onSale) where.push('b.mrp_paise > b.price_paise');
   if (q) {
     const p = add(`%${escapeLike(q)}%`);
     where.push(`(b.title ILIKE ${p} OR a.name ILIKE ${p} OR b.isbn ILIKE ${p})`);
@@ -190,6 +203,7 @@ const COLUMNS = {
   stock: 'stock',
   coverUrl: 'cover_url',
   isActive: 'is_active',
+  isFeatured: 'is_featured',
 };
 
 async function inTransaction(fn) {

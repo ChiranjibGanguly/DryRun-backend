@@ -10,7 +10,8 @@
     "db:create": "node src/db/create.js",
     "migrate": "node src/db/migrate.js",
     "seed": "node src/db/seed.js",
-    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\""
+    "test": "node --test --test-concurrency=1 \"test/**/*.test.js\"",
+    "seed:demo": "node src/db/seedDemo.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

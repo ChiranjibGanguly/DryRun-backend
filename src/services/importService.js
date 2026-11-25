@@ -5,13 +5,13 @@ import { createBook, updateBook } from './catalogService.js';
 
 export const IMPORT_COLUMNS = [
   'title', 'author', 'price', 'mrp', 'stock', 'isbn', 'language',
-  'publisher', 'pages', 'categories', 'description', 'cover_url', 'active',
+  'publisher', 'pages', 'categories', 'description', 'cover_url', 'active', 'featured',
 ];
 
 export const IMPORT_TEMPLATE =
   `${IMPORT_COLUMNS.join(',')}\n` +
-  'The Guide,R. K. Narayan,299,350,12,9780000000001,English,Indian Thought Publications,220,fiction,"A guide becomes a holy man by accident.",,yes\n' +
-  'Panchatantra Stories,Vishnu Sharma,159,199,40,,English,,,children;fiction,Animal fables for young readers.,,yes\n';
+  'The Guide,R. K. Narayan,299,350,12,9780000000001,English,Indian Thought Publications,220,fiction,"A guide becomes a holy man by accident.",,yes,yes\n' +
+  'Panchatantra Stories,Vishnu Sharma,159,199,40,,English,,,children;fiction,Animal fables for young readers.,,yes,no\n';
 
 const MAX_ROWS = 2000;
 
@@ -83,6 +83,10 @@ function toBookInput(row, categoriesByKey) {
       description: (row.description ?? '').trim() || null,
       coverUrl,
       isActive: yes(row.active),
+      // Empty/missing "featured" leaves an existing book's setting as it is.
+      isFeatured: String(row.featured ?? '').trim() === ''
+        ? undefined
+        : /^(yes|y|true|1)$/i.test(String(row.featured).trim()),
       categorySlugs,
     },
   };

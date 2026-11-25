@@ -14,7 +14,8 @@ npm install
 cp .env.example .env    # set DATABASE_URL (with your Postgres password) and JWT_SECRET
 npm run db:create       # creates the "dryrun" database
 npm run migrate         # applies src/db/migrations/*.sql
-npm run seed            # admin account, categories, 22 sample books
+npm run seed            # admin account, 7 categories, 74 sample books (8 featured)
+npm run seed:demo       # optional: 4 demo customers + 20 orders (development only)
 npm run dev             # http://localhost:3000, restarts on changes
 npm test                # integration tests (need the database)
 ```
@@ -40,13 +41,12 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 | POST | `/api/auth/register` | – | `{ name, email, password }` → `{ token, user }` |
 | POST | `/api/auth/login` | – | `{ email, password }` → `{ token, user }` |
 | GET | `/api/auth/me` | Bearer token | Current user |
-| POST | `/api/auth/change-password` | Bearer token | `{ currentPassword, newPassword }` |
 
 ### Catalogue (public)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/books` | `?q=` (title, author, ISBN) `&category=<slug>` `&sort=newest\|price_asc\|price_desc\|title` `&page=1&limit=20` (max 50) |
+| GET | `/api/books` | `?q=` (title, author, ISBN) `&category=<slug>` `&featured=true` `&onSale=true` `&sort=newest\|price_asc\|price_desc\|title\|bestselling\|discount` `&page=1&limit=20` (max 50) |
 | GET | `/api/books/:slug` | One active book with author and categories |
 | GET | `/api/categories` | Categories with active book counts |
 | GET | `/api/authors` | All authors |
@@ -57,7 +57,7 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 |--------|------|-------------|
 | GET | `/api/admin/books` | Same filters as `/api/books`, includes inactive books |
 | GET | `/api/admin/books/:id` | One book by id |
-| POST | `/api/admin/books` | `{ title, pricePaise, mrpPaise?, stock?, authorId? \| authorName?, description?, isbn?, publisher?, language?, pages?, coverUrl?, isActive?, categorySlugs? }` |
+| POST | `/api/admin/books` | `{ title, pricePaise, mrpPaise?, stock?, authorId? \| authorName?, description?, isbn?, publisher?, language?, pages?, coverUrl?, isActive?, isFeatured?, categorySlugs? }` |
 | PATCH | `/api/admin/books/:id` | Any of the fields above |
 | DELETE | `/api/admin/books/:id` | Delete a book (past orders keep their snapshot) |
 | POST | `/api/admin/authors` | `{ name, bio? }` |
@@ -75,7 +75,7 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 | GET | `/api/admin/books/import/template` | CSV template |
 | POST | `/api/admin/books/import` | multipart `file` (CSV, max 2 MB, 2000 rows). `?dryRun=1` checks without saving. Rows with an existing ISBN update that book; others are created. → `{ created, updated, failed, rows: [{ row, title, action, errors }] }` |
 
-CSV columns (first line): `title, author, price, mrp, stock, isbn, language, publisher, pages, categories, description, cover_url, active`.
+CSV columns (first line): `title, author, price, mrp, stock, isbn, language, publisher, pages, categories, description, cover_url, active, featured`.
 `title` and `price` are required; prices in rupees (`299`, `₹1,299.50`); categories by name or slug, separated by `;`; `active` = yes/no.
 
 ### Cart (login required)
@@ -121,22 +121,5 @@ events `payment.captured` and `order.paid`, and put its secret in `RAZORPAY_WEBH
 
 Uploaded covers are stored in `backend/uploads/` and served at `/uploads/...`
 (moving to Cloudinary before launch).
-
-## Emails
-
-Order confirmation (COD placed / online paid), shipped (with courier and tracking) and
-cancelled emails are sent in the background through [Resend](https://resend.com) when
-`RESEND_API_KEY` is set; otherwise they are printed in the backend console.
-An email problem never blocks an order. Settings: `RESEND_API_KEY`, `EMAIL_FROM`, `SHOP_URL`.
-
-## Security
-
-- Security headers (helmet); `x-powered-by` hidden.
-- Rate limits per IP: login, register and change password `RATE_LIMIT_AUTH` (20) per
-  `RATE_LIMIT_WINDOW_MINUTES` (15); all other API calls `RATE_LIMIT_API` (1500). Answer: 429.
-- `CORS_ORIGIN`: comma-separated list of web app addresses.
-- `TRUST_PROXY=1` behind Render/Railway/Nginx so limits see the real client IP.
-- With `NODE_ENV=production` the API refuses to start if `JWT_SECRET` is shorter than
-  32 characters, `CORS_ORIGIN` is `*`, or `ADMIN_PASSWORD` is still the default.
 
 Errors are returned as `{ "error": "message" }` (validation errors add `details`).
