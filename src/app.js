@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import { config } from './config.js';
 import { pool } from './db/pool.js';
 import authRouter from './routes/auth.js';
@@ -15,7 +17,12 @@ import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 export function createApp() {
   const app = express();
+  app.disable('x-powered-by');
+  if (config.trustProxy) app.set('trust proxy', config.trustProxy);
 
+  // Security headers. Covers are loaded by the web app from another origin,
+  // so resources may be used cross-origin.
+  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
   app.use(cors({ origin: config.corsOrigin }));
 
   // Needs the raw body for signature checks, so it comes before express.json().
@@ -26,6 +33,22 @@ export function createApp() {
   );
 
   app.use(express.json({ limit: '1mb' }));
+
+  // Rate limits per IP. Login/register get a tight limit against password guessing.
+  const limiter = (limit, message) =>
+    rateLimit({
+      windowMs: config.rateLimits.windowMinutes * 60 * 1000,
+      limit,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      handler: (_req, res) => res.status(429).json({ error: message }),
+    });
+  const authLimiter = limiter(
+    config.rateLimits.auth,
+    'Too many attempts. Please wait a few minutes and try again.',
+  );
+  app.use(['/api/auth/login', '/api/auth/register', '/api/auth/change-password'], authLimiter);
+  app.use('/api', limiter(config.rateLimits.api, 'Too many requests. Please slow down.'));
 
   // Uploaded book covers
   app.use('/uploads', express.static(config.uploadDir, { maxAge: '7d', fallthrough: false }));

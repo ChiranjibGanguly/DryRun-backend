@@ -4,6 +4,12 @@ import { HttpError } from '../utils/httpError.js';
 import { getAddress } from './addressService.js';
 import { shippingFor } from './cartService.js';
 import { isValidPaymentSignature, razorpay } from './razorpay.js';
+import { sendInBackground } from './mailer.js';
+import {
+  orderCancelledEmail,
+  orderConfirmationEmail,
+  orderShippedEmail,
+} from '../emails/orderEmails.js';
 
 const ORDER_SELECT = `
   SELECT o.*,
@@ -31,6 +37,26 @@ export function toOrder(r) {
     paidAt: r.paid_at,
     cancelledAt: r.cancelled_at,
   };
+}
+
+const EMAILS = {
+  confirmed: (order, user) => orderConfirmationEmail(order, user),
+  shipped: (order, user, extra) => orderShippedEmail(order, user, extra),
+  cancelled: (order, user, extra) => orderCancelledEmail(order, user, extra),
+};
+
+/**
+ * Emails the customer about an order ('confirmed', 'shipped', 'cancelled').
+ * Runs in the background; failures are logged, never thrown.
+ */
+export function notifyOrder(orderId, kind, extra = {}) {
+  (async () => {
+    const found = await findOrder('o.id = $1', [orderId]);
+    if (!found) return;
+    const { rows } = await query('SELECT name, email FROM users WHERE id = $1', [found.row.user_id]);
+    if (!rows[0]) return;
+    sendInBackground(EMAILS[kind](found.order, rows[0], extra));
+  })().catch((err) => console.error('Order email failed:', err.message));
 }
 
 async function findOrder(where, params) {
@@ -171,6 +197,7 @@ export async function placeOrder(userId, { addressId, paymentMethod }) {
   });
 
   if (paymentMethod === 'cod') {
+    notifyOrder(orderId, 'confirmed');
     return { order: await getOrder(userId, orderId), payment: null };
   }
 
@@ -222,23 +249,26 @@ export async function confirmPayment(userId, { orderId, razorpayOrderId, razorpa
     throw new HttpError(409, 'This order was cancelled. Please contact support about a refund.');
   }
 
-  await query(
+  const { rowCount } = await query(
     `UPDATE orders SET status = 'paid', payment_status = 'paid', payment_id = $2, paid_at = now()
      WHERE id = $1 AND status = 'pending'`,
     [orderId, razorpayPaymentId],
   );
+  if (rowCount) notifyOrder(orderId, 'confirmed');
   return getOrder(userId, orderId);
 }
 
 /** Webhook: marks the order with this Razorpay order id as paid. Returns true if it changed. */
 export async function markPaidFromWebhook(razorpayOrderId, paymentId) {
-  const { rowCount } = await query(
+  const { rows } = await query(
     `UPDATE orders SET status = 'paid', payment_status = 'paid',
                        payment_id = COALESCE(payment_id, $2), paid_at = COALESCE(paid_at, now())
-     WHERE razorpay_order_id = $1 AND status = 'pending'`,
+     WHERE razorpay_order_id = $1 AND status = 'pending'
+     RETURNING id`,
     [razorpayOrderId, paymentId],
   );
-  return rowCount > 0;
+  if (rows[0]) notifyOrder(rows[0].id, 'confirmed');
+  return rows.length > 0;
 }
 
 /** Customers can cancel unpaid orders; stock is put back. */
@@ -254,5 +284,6 @@ export async function cancelOrder(userId, orderId) {
     }
     await releaseOrder(client, orderId, userId, { restoreCart: false });
   });
+  notifyOrder(orderId, 'cancelled', { byCustomer: true });
   return getOrder(userId, orderId);
 }

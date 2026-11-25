@@ -1,5 +1,6 @@
 import { pool, query } from '../db/pool.js';
 import { HttpError } from '../utils/httpError.js';
+import { notifyOrder } from './orderService.js';
 
 const ADMIN_ORDER_SELECT = `
   SELECT o.*, u.name AS customer_name, u.email AS customer_email,
@@ -99,7 +100,7 @@ async function withOrderLocked(id, fn) {
  *   pending | placed -> cancelled (stock returned). Paid orders need a refund first.
  */
 export async function updateOrderStatus(id, { status, trackingNumber, courier }) {
-  return withOrderLocked(id, async (client, order) => {
+  const result = await withOrderLocked(id, async (client, order) => {
     const from = order.status;
     if (status === 'shipped') {
       if (!['placed', 'paid'].includes(from)) {
@@ -142,6 +143,9 @@ export async function updateOrderStatus(id, { status, trackingNumber, courier })
       throw new HttpError(400, 'Status must be shipped, delivered or cancelled');
     }
   });
+  if (status === 'shipped') notifyOrder(id, 'shipped', { courier, trackingNumber });
+  if (status === 'cancelled') notifyOrder(id, 'cancelled', { byCustomer: false });
+  return result;
 }
 
 /** Cash collected for a COD order before it is marked delivered. */

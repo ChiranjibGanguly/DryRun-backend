@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { requireAuth } from '../middleware/auth.js';
 import { validateBody } from '../middleware/validate.js';
 import {
+  changePassword,
   createUser,
   findUserById,
   signToken,
@@ -55,5 +56,25 @@ router.get('/me', requireAuth, async (req, res, next) => {
     next(err);
   }
 });
+
+router.post(
+  '/change-password',
+  requireAuth,
+  validateBody(z.object({
+    currentPassword: z.string().min(1, 'Enter your current password'),
+    newPassword: z
+      .string()
+      .min(8, 'New password must be at least 8 characters')
+      .max(72, 'New password must be at most 72 characters'),
+  })),
+  async (req, res, next) => {
+    try {
+      await changePassword(req.user.id, req.body.currentPassword, req.body.newPassword);
+      res.json({ ok: true });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
 
 export default router;

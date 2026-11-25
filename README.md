@@ -40,6 +40,7 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 | POST | `/api/auth/register` | – | `{ name, email, password }` → `{ token, user }` |
 | POST | `/api/auth/login` | – | `{ email, password }` → `{ token, user }` |
 | GET | `/api/auth/me` | Bearer token | Current user |
+| POST | `/api/auth/change-password` | Bearer token | `{ currentPassword, newPassword }` |
 
 ### Catalogue (public)
 
@@ -120,5 +121,22 @@ events `payment.captured` and `order.paid`, and put its secret in `RAZORPAY_WEBH
 
 Uploaded covers are stored in `backend/uploads/` and served at `/uploads/...`
 (moving to Cloudinary before launch).
+
+## Emails
+
+Order confirmation (COD placed / online paid), shipped (with courier and tracking) and
+cancelled emails are sent in the background through [Resend](https://resend.com) when
+`RESEND_API_KEY` is set; otherwise they are printed in the backend console.
+An email problem never blocks an order. Settings: `RESEND_API_KEY`, `EMAIL_FROM`, `SHOP_URL`.
+
+## Security
+
+- Security headers (helmet); `x-powered-by` hidden.
+- Rate limits per IP: login, register and change password `RATE_LIMIT_AUTH` (20) per
+  `RATE_LIMIT_WINDOW_MINUTES` (15); all other API calls `RATE_LIMIT_API` (1500). Answer: 429.
+- `CORS_ORIGIN`: comma-separated list of web app addresses.
+- `TRUST_PROXY=1` behind Render/Railway/Nginx so limits see the real client IP.
+- With `NODE_ENV=production` the API refuses to start if `JWT_SECRET` is shorter than
+  32 characters, `CORS_ORIGIN` is `*`, or `ADMIN_PASSWORD` is still the default.
 
 Errors are returned as `{ "error": "message" }` (validation errors add `details`).

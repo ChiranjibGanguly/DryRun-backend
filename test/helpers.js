@@ -1,6 +1,24 @@
 import { createApp } from '../src/app.js';
 import { migrate } from '../src/db/migrate.js';
 import { createUser, signToken } from '../src/services/userService.js';
+import { mailer } from '../src/services/mailer.js';
+
+/** Emails "sent" during tests land here instead of going out. */
+export const outbox = [];
+mailer.transport = async (message) => {
+  outbox.push(message);
+};
+
+/** Waits until an email matching `test` arrives (emails are sent in the background). */
+export async function waitForEmail(test, timeoutMs = 3000) {
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const found = outbox.find(test);
+    if (found) return found;
+    await new Promise((r) => setTimeout(r, 25));
+  }
+  throw new Error('Expected email was not sent');
+}
 
 /** Starts the app on a random port; returns { base, close }. */
 export async function startServer() {

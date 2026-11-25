@@ -55,3 +55,16 @@ export async function findUserById(id) {
   const { rows } = await query(`SELECT ${PUBLIC_COLUMNS} FROM users WHERE id = $1`, [id]);
   return rows[0] ? toPublicUser(rows[0]) : null;
 }
+
+export async function changePassword(userId, currentPassword, newPassword) {
+  const { rows } = await query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+  if (!rows[0]) throw new HttpError(401, 'Account no longer exists');
+  if (!(await bcrypt.compare(currentPassword, rows[0].password_hash))) {
+    throw new HttpError(400, 'Your current password is not correct');
+  }
+  if (currentPassword === newPassword) {
+    throw new HttpError(400, 'Choose a password different from the current one');
+  }
+  const hash = await bcrypt.hash(newPassword, 10);
+  await query('UPDATE users SET password_hash = $2 WHERE id = $1', [userId, hash]);
+}

@@ -57,6 +57,9 @@ try {
     added++;
   }
   console.log(`Sample books: ${added} added, ${sampleBooks.length - added} already there`);
+  if (ADMIN_PASSWORD === 'Admin@12345') {
+    console.warn('Note: ADMIN_PASSWORD is the default. Change the admin password (Account → Change password) before going live.');
+  }
 } catch (err) {
   console.error(explainDbError(err));
   process.exitCode = 1;
