@@ -1,4 +1,4 @@
-# DryRun Books – Backend
+# Pustakalay – Backend
 
 Node.js + Express API for the DryRun book selling platform, with PostgreSQL
 (`pg` + plain SQL migrations) and JWT authentication.

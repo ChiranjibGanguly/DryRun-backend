@@ -31,11 +31,11 @@ const addressText = (a) =>
 function layout(title, bodyHtml) {
   return `<!doctype html><html><body style="margin:0;background:#f3f2ec;font-family:Arial,sans-serif;color:#2f2f2f">
   <div style="max-width:560px;margin:0 auto;padding:24px">
-    <h2 style="font-family:Georgia,serif;margin:0 0 4px">DryRun Books</h2>
+    <h2 style="font-family:Georgia,serif;margin:0 0 4px">Pustakalay</h2>
     <div style="background:#fff;border-radius:8px;padding:24px;margin-top:12px">
       <h3 style="margin-top:0">${esc(title)}</h3>${bodyHtml}
     </div>
-    <p style="font-size:12px;color:#757575">You are receiving this because you ordered from DryRun Books.</p>
+    <p style="font-size:12px;color:#757575">You are receiving this because you ordered from Pustakalay.</p>
   </div></body></html>`;
 }
 
@@ -59,7 +59,7 @@ Delivering to:
 
 See your order: ${orderLink(order)}
 
-DryRun Books`;
+Pustakalay`;
   const html = layout(`Thank you, ${user.name}!`, `
     <p>Your order <b>${ref(order)}</b> is confirmed. ${esc(payLine)}</p>
     ${itemsTable(order)}
@@ -80,7 +80,7 @@ ${itemsText(order)}
 
 See your order: ${orderLink(order)}
 
-DryRun Books`;
+Pustakalay`;
   const html = layout('Your books are on the way', `
     <p>Your order <b>${ref(order)}</b> has been shipped.</p>
     ${tracking ? `<p><b>Tracking:</b> ${esc(tracking)}</p>` : ''}
@@ -101,7 +101,7 @@ ${itemsText(order)}
 
 If you have questions, just reply to this email.
 
-DryRun Books`;
+Pustakalay`;
   const html = layout('Order cancelled', `
     <p>${why} <b>${ref(order)}</b>. You have not been charged.</p>${itemsTable(order)}
     <p style="margin-top:16px">If you have questions, just reply to this email.</p>`);

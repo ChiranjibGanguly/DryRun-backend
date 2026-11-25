@@ -1,0 +1,45 @@
+# Render Blueprint for the Pustakalay API (free web service).
+# Render dashboard → New → Blueprint → pick this repo. Secrets marked
+# `sync: false` are asked for once when the Blueprint is created.
+services:
+  - type: web
+    name: pustakalay-api
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci
+    # Applies new migrations and makes sure the admin, categories and sample
+    # books exist (safe to run on every start), then starts the API.
+    startCommand: npm run start:prod
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DATABASE_URL # Neon connection string, ending in ?sslmode=require
+        sync: false
+      - key: CORS_ORIGIN # e.g. https://pustakalay.pages.dev
+        sync: false
+      - key: SHOP_URL # same address as CORS_ORIGIN
+        sync: false
+      - key: ADMIN_EMAIL
+        value: admin@pustakalay.local
+      - key: ADMIN_PASSWORD # anything except the development default
+        sync: false
+      - key: ADMIN_NAME
+        value: Store Admin
+      - key: CLOUDINARY_URL # cloudinary://KEY:SECRET@CLOUD_NAME
+        sync: false
+      - key: EMAIL_FROM
+        value: Pustakalay <onboarding@resend.dev>
+      # Optional – leave unset for the demo:
+      # RESEND_API_KEY (order emails; without it emails are only logged)
+      # RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET / RAZORPAY_WEBHOOK_SECRET
+      #   (online payment; without them the shop offers cash on delivery only)

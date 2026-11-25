@@ -25,8 +25,14 @@ export const config = {
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
-  // Book covers are stored here and served at /uploads (Cloudinary later).
+  // Book covers: Cloudinary when CLOUDINARY_URL is set (needed on hosts whose
+  // disk is wiped on restart, like Render's free plan), otherwise this folder,
+  // served at /uploads.
   uploadDir: path.resolve(process.env.UPLOAD_DIR || 'uploads'),
+  get cloudinaryUrl() {
+    return process.env.CLOUDINARY_URL || '';
+  },
+  cloudinaryFolder: process.env.CLOUDINARY_FOLDER || 'pustakalay/covers',
 
   // Shipping: flat fee, free at or above the minimum order value (paise).
   shippingFeePaise: Number(process.env.SHIPPING_FEE_PAISE ?? 4900),
@@ -58,7 +64,7 @@ export const config = {
   get resendApiKey() {
     return process.env.RESEND_API_KEY || '';
   },
-  emailFrom: process.env.EMAIL_FROM || 'DryRun Books <orders@example.com>',
+  emailFrom: process.env.EMAIL_FROM || 'Pustakalay <orders@example.com>',
   shopUrl: (process.env.SHOP_URL || 'http://localhost:8080').replace(/\/$/, ''),
 };
 
@@ -69,5 +75,8 @@ export function checkProductionConfig() {
   if (config.jwtSecret.length < 32) problems.push('JWT_SECRET must be at least 32 characters');
   if (config.corsOrigin === '*') problems.push('CORS_ORIGIN must list your web app address(es), not *');
   if (process.env.ADMIN_PASSWORD === 'Admin@12345') problems.push('Change ADMIN_PASSWORD from the default');
+  if (!process.env.CLOUDINARY_URL && !process.env.UPLOAD_DIR) {
+    console.warn('Warning: CLOUDINARY_URL is not set – uploaded covers are kept on local disk.');
+  }
   return problems;
 }

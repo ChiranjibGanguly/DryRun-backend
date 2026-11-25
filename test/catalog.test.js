@@ -280,3 +280,21 @@ describe('cover uploads', () => {
     assert.equal(res.status, 404);
   });
 });
+
+describe('cover storage (Cloudinary helpers)', () => {
+  test('parses CLOUDINARY_URL and signs params like Cloudinary does', async () => {
+    const { parseCloudinaryUrl, signParams } = await import('../src/services/coverStorage.js');
+    assert.deepEqual(parseCloudinaryUrl('cloudinary://123:abc@demo-cloud'), {
+      apiKey: '123',
+      apiSecret: 'abc',
+      cloudName: 'demo-cloud',
+    });
+    assert.equal(parseCloudinaryUrl(''), null);
+    assert.throws(() => parseCloudinaryUrl('https://example.com'));
+    // Example from Cloudinary's docs (eager/public_id/timestamp, secret "abcd").
+    assert.equal(
+      signParams({ timestamp: 1315060510, public_id: 'sample_image', eager: 'w_400,h_300,c_pad|w_260,h_200,c_crop' }, 'abcd'),
+      'bfd09f95f331f558cbd1320e67aa8d488770583e',
+    );
+  });
+});

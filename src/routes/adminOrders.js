@@ -65,7 +65,7 @@ router.post('/orders/:id/mark-paid', wrap(async (req, res) => {
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 2 * 1024 * 1024, files: 1 } });
 
 router.get('/books/import/template', (_req, res) => {
-  res.type('text/csv').attachment('dryrun-books-template.csv').send(IMPORT_TEMPLATE);
+  res.type('text/csv').attachment('pustakalay-books-template.csv').send(IMPORT_TEMPLATE);
 });
 
 // POST /api/admin/books/import?dryRun=1  (multipart field "file", a .csv)
