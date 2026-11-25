@@ -62,6 +62,21 @@ Prices are integers in paise (₹1 = 100 paise). Lists return
 | POST | `/api/admin/authors` | `{ name, bio? }` |
 | POST | `/api/admin/uploads/cover` | multipart field `file` (JPEG/PNG/WebP, max 2 MB) → `{ url }`; use it as `coverUrl` |
 
+### Admin: dashboard, orders and CSV import (admin token required)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/admin/stats` | `{ ordersToday, salesTodayPaise, sales30dPaise, toShip, shipped, awaitingPayment, activeBooks, outOfStock, lowStock[] }` |
+| GET | `/api/admin/orders` | `?status=pending\|placed\|paid\|shipped\|delivered\|cancelled\|to_ship` `&q=` (order ref like `#3F2A9C1E`, customer name or email) `&page&limit` |
+| GET | `/api/admin/orders/:id` | Order with customer, items, address, payment and shipping details |
+| PATCH | `/api/admin/orders/:id/status` | `{ status: "shipped", courier?, trackingNumber? }` (from placed/paid), `{ status: "delivered" }` (from shipped; COD becomes paid), `{ status: "cancelled" }` (pending/placed; stock returned) |
+| POST | `/api/admin/orders/:id/mark-paid` | Cash collected for a COD order |
+| GET | `/api/admin/books/import/template` | CSV template |
+| POST | `/api/admin/books/import` | multipart `file` (CSV, max 2 MB, 2000 rows). `?dryRun=1` checks without saving. Rows with an existing ISBN update that book; others are created. → `{ created, updated, failed, rows: [{ row, title, action, errors }] }` |
+
+CSV columns (first line): `title, author, price, mrp, stock, isbn, language, publisher, pages, categories, description, cover_url, active`.
+`title` and `price` are required; prices in rupees (`299`, `₹1,299.50`); categories by name or slug, separated by `;`; `active` = yes/no.
+
 ### Cart (login required)
 
 | Method | Path | Description |

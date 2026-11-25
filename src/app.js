@@ -5,6 +5,7 @@ import { pool } from './db/pool.js';
 import authRouter from './routes/auth.js';
 import catalogRouter from './routes/catalog.js';
 import adminCatalogRouter from './routes/adminCatalog.js';
+import adminOrdersRouter from './routes/adminOrders.js';
 import uploadsRouter from './routes/uploads.js';
 import cartRouter from './routes/cart.js';
 import addressesRouter from './routes/addresses.js';
@@ -41,6 +42,7 @@ export function createApp() {
   app.use('/api/auth', authRouter);
   app.use('/api', catalogRouter);
   app.use('/api/admin/uploads', uploadsRouter);
+  app.use('/api/admin', adminOrdersRouter);
   app.use('/api/admin', adminCatalogRouter);
   app.use('/api/cart', cartRouter);
   app.use('/api/addresses', addressesRouter);
